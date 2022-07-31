@@ -8,9 +8,7 @@ from django.db import models
 
 
 class User(AbstractUser):
-    INVALID_CODE = "######"
-
-    full_name = models.CharField(("full name"), max_length=256)
+    full_name = models.CharField(max_length=256)
     email = models.EmailField(
         ("email"),
         unique=True,
@@ -19,6 +17,9 @@ class User(AbstractUser):
         },
         null=True
     )
+    avatar = models.ImageField(upload_to="images/")
+    slug = models.CharField(max_length=256, null=True, blank=True)
+    
     created_at = models.DateTimeField(("date created"), auto_now_add=True, null=True)
     updated_at = models.DateTimeField(("date updated"), auto_now=True)
 
