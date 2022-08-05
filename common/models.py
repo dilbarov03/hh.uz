@@ -17,7 +17,7 @@ class User(AbstractUser):
         },
         null=True
     )
-    avatar = models.ImageField(upload_to="images/")
+    avatar = models.ImageField(upload_to="images/", blank=True, null=True)
     slug = models.CharField(max_length=256, null=True, blank=True)
     
     created_at = models.DateTimeField(("date created"), auto_now_add=True, null=True)
