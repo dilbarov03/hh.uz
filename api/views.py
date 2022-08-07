@@ -77,6 +77,7 @@ TODO
 """
 
 class WorkerHomeView(APIView):
+   permission_classes = [IsAuthenticated]
    def get(self, request, *args, **kwargs):
       worker = Worker.objects.filter(user=request.user).first()
       recommended_jobs = Vacancy.objects.filter(reduce(operator.or_, (Q(title__contains=word) for word in worker.desired_job_title.split())))
@@ -120,6 +121,8 @@ class VacancyFilterView(generics.ListAPIView):
 
 
 class VacancyApplyView(APIView):
+   permission_classes = [IsAuthenticated]
+
    def post(self, request, *args, **kwargs):
       vacancy = Vacancy.objects.get(pk=self.kwargs.get("pk"))
       worker = Worker.objects.filter(user=request.user).first()
@@ -133,12 +136,16 @@ class VacancyApplyView(APIView):
          return Response({"msg": "You have already applied to this job"})
 
 class AppliedJobsView(APIView):
+   permission_classes = [IsAuthenticated]
+
    def get(self, request):
       worker = Worker.objects.filter(user=request.user).first()
       appliedJobs_Serializer = VacancyRegionSerializer(worker.applied_jobs, many=True)
       return Response(appliedJobs_Serializer.data)
 
 class UpdateResumeView(APIView):
+   permission_classes = [IsAuthenticated]
+
    def get(self, request):
       worker = Worker.objects.filter(user=self.request.user).first()
       resume_serializer = WorkerResumeSerializer(worker)
@@ -153,6 +160,8 @@ class UpdateResumeView(APIView):
       return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class GetUpdateProfileView(APIView):
+   permission_classes = [IsAuthenticated]
+
    def get(self, request):
       worker = Worker.objects.filter(user=self.request.user).first()
       worker_serializer = WorkerSerializer(worker)
@@ -167,6 +176,8 @@ class GetUpdateProfileView(APIView):
       return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class WorkerJobCRUDView(APIView):
+   permission_classes = [IsAuthenticated]
+
    def get(self, request):
       worker_job = WorkerDesiredJob.objects.filter(worker=Worker.objects.get(user=self.request.user))
       serializer = WorkerJobSerializer(worker_job)
@@ -196,32 +207,40 @@ class WorkerJobCRUDView(APIView):
       return Response({"msg": "Successfully deleted"})
 
 class WorkerLanguageView(generics.ListCreateAPIView):
+   permission_classes = [IsAuthenticated]
+
    serializer_class = WorkerLanguageSerializer
 
    def get_queryset(self):
       return WorkerLanguages.objects.filter(worker=Worker.objects.get(user=self.request.user)).all()   
 
 class WorkerLanguageUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+   permission_classes = [IsAuthenticated]
+ 
    serializer_class = WorkerLanguageSerializer
    def get_queryset(self):
       return WorkerLanguages.objects.filter(pk=self.kwargs.get("pk"), worker=Worker.objects.get(user=self.request.user))
 
 class WorkerExperienceView(generics.ListCreateAPIView):
+   permission_classes = [IsAuthenticated]
    serializer_class = WorkerExperienceSerializer
    def get_queryset(self):
       return WorkerExperience.objects.filter(worker=Worker.objects.get(user=self.request.user)).all()
 
 class WorkerExperienceUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+   permission_classes = [IsAuthenticated]
    serializer_class = WorkerExperienceSerializer
    def get_queryset(self):
       return WorkerExperience.objects.filter(pk=self.kwargs.get("pk"), worker=Worker.objects.get(user=self.request.user))  
 
 class WorkerPortfoiloView(generics.ListCreateAPIView):
+   permission_classes = [IsAuthenticated]
    serializer_class = WorkerPortfoiloSerializer
    def get_queryset(self):
       return WorkerPortfoilo.objects.filter(worker=Worker.objects.get(user=self.request.user)).all()
 
 class WorkerPortfoiloUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+   permission_classes = [IsAuthenticated]
    serializer_class = WorkerPortfoiloSerializer
    def get_queryset(self):
       return WorkerPortfoilo.objects.filter(pk=self.kwargs.get("pk"), worker=Worker.objects.get(user=self.request.user))  
@@ -246,6 +265,7 @@ class CompanyVacancyView(generics.ListCreateAPIView):
       return Vacancy.objects.filter(company=company).all()
 
 class AppliedUsersView(generics.ListAPIView):
+   permission_classes = [IsAuthenticated]
    serializer_class = AppliedUserSerializer
    
    def get_queryset(self):
@@ -255,6 +275,7 @@ class AppliedUsersView(generics.ListAPIView):
 
 
 class CompanyGetUpdateView(APIView):
+   permission_classes = [IsAuthenticated]
    def get(self, request):
       company = Company.objects.filter(user=self.request.user).first()
       serializer = CompanySerializer(company)

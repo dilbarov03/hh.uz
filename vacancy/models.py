@@ -98,12 +98,12 @@ class Vacancy(BaseModel):
       company = self.company
       category = self.job
       parent = category.parent
-      if created:
-         company.vacancy_count+=1
-         company.save()
-         category.vacancy_count+=1
-         if parent:
-            parent.vacancy_count+=1
+      
+      company.vacancy_count=Vacancy.objects.filter(company=company).count()
+      company.save()
+      category.vacancy_count=Vacancy.objects.filter(category=category).count()
+      if parent and created:
+         parent.vacancy_count+=1
       
       if self.min_salary<category.min_salary:
          category.min_salary = self.min_salary
@@ -125,9 +125,17 @@ class Vacancy(BaseModel):
 
       super().save(*args, **kwargs)
 
-class Worker(BaseModel):
+@receiver(pre_delete, sender=Vacancy)
+def my_handler(sender, instance, **kwargs):
+   company = instance.company
+   company.vacancy_count=Vacancy.objects.filter(company=company).count()
+   parent = company.parent
+   if parent:
+      parent.vacancy_count-=1
+      parent.save()
+   company.save()
 
-   
+class Worker(BaseModel):
    user = models.OneToOneField(User, on_delete=models.CASCADE)
    description = models.TextField(null=True, blank=True)
    birthdate = models.DateField(null=True, blank=True)
