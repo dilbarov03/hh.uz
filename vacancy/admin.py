@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Vacancy, Company, Worker
+from .models import Category, Vacancy, Company, Worker, WorkerDesiredJob
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
@@ -15,4 +15,8 @@ class VacancyAdmin(admin.ModelAdmin):
 
 @admin.register(Worker)
 class WorkerAdmin(admin.ModelAdmin):
-   list_display = ['short_description', 'desired_job_title']
+   list_display = ['short_description']
+
+@admin.register(WorkerDesiredJob)
+class WorkerDJAdmin(admin.ModelAdmin):
+   list_display = ["worker"]   

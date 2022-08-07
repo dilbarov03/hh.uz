@@ -1,14 +1,19 @@
+from cgitb import lookup
 from functools import reduce
 import operator
+from random import choices
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Count, Avg, Min, Max
-from vacancy.models import Category, Vacancy, Company, Worker
+from vacancy.models import LANGUAGE_CHOICES, REGION_CHOICES, WORKER_STATUS, Category, Vacancy, Company, Worker, WorkerDesiredJob, WorkerLanguages
 from django.db.models import Q
 from .serializers import *
 from rest_framework import status
+from django.http import Http404
+from django_filters import rest_framework as filters
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
 
 class CategoryView(generics.ListAPIView):
    queryset = Category.objects.filter(parent=None).all()
@@ -61,10 +66,14 @@ TODO
    Избранные вакансии
    Рекомендуем лично вам
 
-
+   - /vacancy/all
    - /vacancy/id/apply
    - /upload/resume
-
+   - /profile/
+   - /desired_job/
+   - /languages/
+   - /experience/
+   - /portfoilo/
 """
 
 class WorkerHomeView(APIView):
@@ -86,6 +95,29 @@ class WorkerHomeView(APIView):
 class WorkerGetCreateView(generics.ListCreateAPIView):
    queryset = Worker.objects.all()
    serializer_class = WorkerSerializer
+
+class CharFilterInFilter(filters.BaseInFilter, filters.CharFilter):
+    pass
+
+class VacancyFilter(filters.FilterSet):
+   job_title = filters.CharFilter(field_name="job__name", lookup_expr="icontains")
+   company = filters.CharFilter(field_name="company__title")
+   min_salary = filters.NumberFilter(field_name="min_salary", lookup_expr="gte")
+   max_salary = filters.NumberFilter(field_name="max_salary", lookup_expr="lte")
+   created_at = filters.DateRangeFilter(field_name="created_at")
+   is_remote = filters.BooleanFilter(field_name="is_remote")
+   region = filters.ChoiceFilter(field_name="region", choices=REGION_CHOICES)
+
+   class Meta:
+      model = Vacancy
+      fields = ['job_title', 'company', 'min_salary', 'max_salary', 'created_at','is_remote', 'region']
+
+class VacancyFilterView(generics.ListAPIView):
+   queryset = Vacancy.objects.all()
+   serializer_class = VacancySerializer
+   filter_backends = (DjangoFilterBackend, )
+   filterset_class = VacancyFilter
+
 
 class VacancyApplyView(APIView):
    def post(self, request, *args, **kwargs):
@@ -134,6 +166,67 @@ class GetUpdateProfileView(APIView):
          return Response(serializer.data)
       return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class WorkerJobCRUDView(APIView):
+   def get(self, request):
+      worker_job = WorkerDesiredJob.objects.filter(worker=Worker.objects.get(user=self.request.user))
+      serializer = WorkerJobSerializer(worker_job)
+      return Response(serializer.data)
+
+   def post(self, request, format=None):
+      serializer = WorkerJobSerializer(data=request.data)
+      if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+      return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+   def put(self, request):
+      worker_job = WorkerDesiredJob.objects.filter(worker=Worker.objects.get(user=self.request.user))
+      serializer = WorkerJobSerializer(worker_job, data=request.data)
+      if serializer.is_valid():
+         serializer.save()
+         return Response(serializer.data)
+      return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
+
+   def delete(self, request):
+      worker_job = WorkerDesiredJob.objects.filter(worker=Worker.objects.get(user=self.request.user))
+      if worker_job:
+         worker_job.delete()
+      else:
+         raise Http404
+      return Response({"msg": "Successfully deleted"})
+
+class WorkerLanguageView(generics.ListCreateAPIView):
+   serializer_class = WorkerLanguageSerializer
+
+   def get_queryset(self):
+      return WorkerLanguages.objects.filter(worker=Worker.objects.get(user=self.request.user)).all()   
+
+class WorkerLanguageUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+   serializer_class = WorkerLanguageSerializer
+   def get_queryset(self):
+      return WorkerLanguages.objects.filter(pk=self.kwargs.get("pk"), worker=Worker.objects.get(user=self.request.user))
+
+class WorkerExperienceView(generics.ListCreateAPIView):
+   serializer_class = WorkerExperienceSerializer
+   def get_queryset(self):
+      return WorkerExperience.objects.filter(worker=Worker.objects.get(user=self.request.user)).all()
+
+class WorkerExperienceUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+   serializer_class = WorkerExperienceSerializer
+   def get_queryset(self):
+      return WorkerExperience.objects.filter(pk=self.kwargs.get("pk"), worker=Worker.objects.get(user=self.request.user))  
+
+class WorkerPortfoiloView(generics.ListCreateAPIView):
+   serializer_class = WorkerPortfoiloSerializer
+   def get_queryset(self):
+      return WorkerPortfoilo.objects.filter(worker=Worker.objects.get(user=self.request.user)).all()
+
+class WorkerPortfoiloUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+   serializer_class = WorkerPortfoiloSerializer
+   def get_queryset(self):
+      return WorkerPortfoilo.objects.filter(pk=self.kwargs.get("pk"), worker=Worker.objects.get(user=self.request.user))  
+
+
 """
 TODO
    - /company/vacancies - get vacancies or post a new vacancy
@@ -174,3 +267,50 @@ class CompanyGetUpdateView(APIView):
          serializer.save()
          return Response(serializer.data)
       return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class WorkerFilter(filters.FilterSet):
+   region = filters.ChoiceFilter(field_name="region", choices=REGION_CHOICES)   
+   status = filters.ChoiceFilter(field_name="status", choices=WORKER_STATUS)
+   has_experience = filters.BooleanFilter(field_name="has_experience")
+   has_portfoilo = filters.BooleanFilter(field_name="has_portfoilo")
+   worker_title = filters.CharFilter(field_name="desired_job__title", lookup_expr="icontains")
+   worker_salary = filters.RangeFilter(field_name="desired_job__salary")
+
+   native_language = filters.ChoiceFilter(field_name="native_language", choices=LANGUAGE_CHOICES)
+   languages = filters.ChoiceFilter(field_name="languages", choices=LANGUAGE_CHOICES)
+
+   class Meta:
+      model = Worker
+      fields = ['region', "status", "has_experience", "has_portfoilo",
+      "worker_title", "worker_salary", "native_language", "languages"]
+
+
+class WorkersFilterView(generics.ListAPIView):
+   queryset = Worker.objects.all()
+   serializer_class = WorkerAllSerializer
+   filter_backends = (DjangoFilterBackend, )
+   filterset_class = WorkerFilter
+
+
+"""
+SEARCH VIEWS
+"""
+
+class SearchCompanyView(generics.ListAPIView):
+   queryset = Company.objects.all()
+   serializer_class = CompanySerializer
+   filter_backends = [SearchFilter]
+   search_fields = ['title', 'description']
+
+class SearchVacancyView(generics.ListAPIView):
+   queryset = Vacancy.objects.all()
+   serializer_class = VacancySerializer
+   filter_backends = [SearchFilter]
+   search_fields = ['title', 'description']
+
+class SearchWorkerView(generics.ListAPIView):
+   queryset = Worker.objects.all()
+   serializer_class = WorkerAllSerializer
+   filter_backends = [SearchFilter]
+   search_fields = ['user__full_name', 'description', "desired_job__title"]

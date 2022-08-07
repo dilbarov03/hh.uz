@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'vacancy',
     'api',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -136,6 +137,11 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
 
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
+}
 
 try:
     from .local_settings import *  # noqa
